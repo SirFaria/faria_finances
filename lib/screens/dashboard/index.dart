@@ -1,3 +1,4 @@
+import 'package:faria_finances/screens/cashiers/index.dart';
 import 'package:faria_finances/screens/tags/index.dart';
 import 'package:flutter/material.dart';
 import 'package:faria_finances/screens/categories/index.dart';
@@ -157,6 +158,11 @@ class DashboardPage extends StatelessWidget {
                 title: const Text("Caixas"),
                 onTap: () {
                   // Lógica para navegação
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const CashierListPage()),
+                  );
                 },
               ),
             ],
