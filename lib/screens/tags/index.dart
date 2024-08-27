@@ -418,11 +418,13 @@ class TagCard extends StatelessWidget {
                     // Botão para editar o marcador
                     IconButton(
                       icon: const Icon(Icons.edit),
+                      color: Colors.blue,
                       onPressed: onEdit,
                     ),
                     // Botão para excluir o marcador
                     IconButton(
                       icon: const Icon(Icons.delete),
+                      color: Colors.red,
                       onPressed: onDelete,
                     ),
                   ],

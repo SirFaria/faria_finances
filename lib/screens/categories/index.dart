@@ -423,11 +423,13 @@ class CategoryCard extends StatelessWidget {
                     // Botão para editar a categoria
                     IconButton(
                       icon: const Icon(Icons.edit),
+                      color: Colors.blue,
                       onPressed: onEdit,
                     ),
-                    // Botão para excluir a categoria
+                    // Botão para excluir o marcador
                     IconButton(
                       icon: const Icon(Icons.delete),
+                      color: Colors.red,
                       onPressed: onDelete,
                     ),
                   ],

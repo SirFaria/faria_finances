@@ -128,6 +128,7 @@ class DashboardPage extends StatelessWidget {
                 title: const Text("Transações"),
                 onTap: () {
                   // Lógica para navegação
+                  Navigator.pop(context);
                 },
               ),
               ListTile(
