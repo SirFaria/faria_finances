@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:faria_finances/screens/login/index.dart';
 import 'package:faria_finances/screens/register/index.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 void main() {
   runApp(const MyApp());
@@ -17,6 +18,16 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
+      // Adicione aqui os delegates de localização
+      localizationsDelegates: [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('pt', 'BR'), // Português do Brasil
+        // Outros locais suportados se necessário
+      ],
       home: const MyHomePage(),
     );
   }

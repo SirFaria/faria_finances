@@ -1,8 +1,13 @@
+import 'package:faria_finances/helpers/categoryHelper.dart';
+import 'package:faria_finances/helpers/tagHelper.dart';
+import 'package:faria_finances/helpers/userHelper.dart';
 import 'package:faria_finances/screens/cashiers/index.dart';
-import 'package:faria_finances/screens/tags/index.dart';
-import 'package:flutter/material.dart';
 import 'package:faria_finances/screens/categories/index.dart';
 import 'package:faria_finances/screens/login/index.dart';
+import 'package:faria_finances/screens/tags/index.dart';
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:flutter/services.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -32,7 +37,6 @@ class DashboardPage extends StatelessWidget {
         ],
       ),
       body: Container(
-        // color: const Color(0xFFE9ECEF),
         child: Column(
           children: [
             Padding(
@@ -46,7 +50,7 @@ class DashboardPage extends StatelessWidget {
                   ),
                 ),
                 onPressed: () {
-                  // Lógica para adicionar nova categoria
+                  _showAddTransactionModal(context);
                 },
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -62,6 +66,7 @@ class DashboardPage extends StatelessWidget {
             Expanded(
               child: ListView(
                 children: const [
+                  // Lista de Transações...
                   TransactionCard(
                     name: 'Jacaré Lanches',
                     value: -32.00,
@@ -166,10 +171,316 @@ class DashboardPage extends StatelessWidget {
                   );
                 },
               ),
+              // Navegação do Drawer...
             ],
           ),
         ),
       ),
+    );
+  }
+
+  void _showAddTransactionModal(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return const AddTransactionModal();
+      },
+    );
+  }
+}
+
+class AddTransactionModal extends StatefulWidget {
+  const AddTransactionModal({super.key});
+
+  @override
+  _AddTransactionModalState createState() => _AddTransactionModalState();
+}
+
+class _AddTransactionModalState extends State<AddTransactionModal> {
+  final _formKey = GlobalKey<FormState>();
+  String _titulo = '';
+  String _descricao = '';
+  String _valor = '';
+  String _tipo = 'income';
+  final String _categoria = '';
+  String? _selectedCategoryId;
+  List<Map<String, dynamic>> _categories = [];
+  List<Map<String, dynamic>> _tags = [];
+  List<String> _selectedTagIds = [];
+  DateTime _data = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories(); // Carrega as categorias quando o modal é inicializado
+    _loadTags(); // Carrega as tags
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      // Chama a função que carrega as categorias
+      final categories = await getCategories(loggedUserId);
+
+      // Atualiza o estado com as categorias carregadas
+      setState(() {
+        _categories = categories
+            .map<Map<String, dynamic>>((category) => {
+                  'category_id': category['category_id'],
+                  'title': category['title'],
+                })
+            .toList();
+      });
+    } catch (e) {
+      print('Erro ao carregar categorias: $e');
+      // Handle error, talvez mostrar uma mensagem para o usuário
+    }
+  }
+
+  Future<void> _loadTags() async {
+    try {
+      final tags = await getTags(loggedUserId);
+      setState(() {
+        _tags = tags
+            .map<Map<String, dynamic>>((tag) => {
+                  'tag_id': tag['tag_id'],
+                  'title': tag['title'],
+                })
+            .toList();
+      });
+    } catch (e) {
+      print('Erro ao carregar tags: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Adicionar Transação'),
+      content: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              TextFormField(
+                decoration: const InputDecoration(labelText: 'Título'),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Por favor, insira o título';
+                  }
+                  return null;
+                },
+                onSaved: (value) => _titulo = value!,
+              ),
+              TextFormField(
+                decoration: const InputDecoration(labelText: 'Descrição'),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Por favor, insira a descrição';
+                  }
+                  return null;
+                },
+                onSaved: (value) => _descricao = value!,
+              ),
+              TextFormField(
+                decoration: const InputDecoration(labelText: 'Valor'),
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                ],
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Por favor, insira o valor';
+                  }
+                  if (double.tryParse(value) == null) {
+                    return 'Por favor, insira um valor válido';
+                  }
+                  return null;
+                },
+                onSaved: (value) => _valor = value!,
+              ),
+              DropdownButtonFormField<String>(
+                decoration: const InputDecoration(labelText: 'Tipo'),
+                value: _tipo,
+                items: const [
+                  DropdownMenuItem(value: 'income', child: Text('Entrada')),
+                  DropdownMenuItem(value: 'expense', child: Text('Saída')),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _tipo = value!;
+                  });
+                },
+              ),
+              DropdownButtonFormField<String>(
+                decoration: const InputDecoration(labelText: 'Categoria'),
+                items: _categories.map((category) {
+                  return DropdownMenuItem<String>(
+                    value: category['category_id'].toString(),
+                    child: Text(category['title']),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedCategoryId =
+                        value; // Salva o ID da categoria selecionada
+                  });
+                },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Por favor, selecione uma categoria';
+                  }
+                  return null;
+                },
+              ),
+              TextFormField(
+                decoration: const InputDecoration(labelText: 'Tags'),
+                onTap: () async {
+                  final selectedTags = await showDialog<List<String>>(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return MultiSelectDialog(
+                        items: _tags,
+                        selectedItems: _selectedTagIds,
+                      );
+                    },
+                  );
+
+                  if (selectedTags != null) {
+                    setState(() {
+                      _selectedTagIds = selectedTags;
+                    });
+                  }
+                },
+                readOnly: true,
+                validator: (value) {
+                  if (_selectedTagIds.isEmpty) {
+                    return 'Por favor, selecione ao menos uma tag';
+                  }
+                  return null;
+                },
+                controller: TextEditingController(
+                    text: _selectedTagIds.isNotEmpty
+                        ? _tags
+                            .where((tag) => _selectedTagIds
+                                .contains(tag['tag_id'].toString()))
+                            .map((tag) => tag['title'])
+                            .join(', ')
+                        : ''),
+              ),
+              TextFormField(
+                decoration:
+                    const InputDecoration(labelText: 'Data da Transação'),
+                readOnly: true,
+                onTap: () async {
+                  final pickedDate = await showDatePicker(
+                    context: context,
+                    initialDate: _data,
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime(2100),
+                    locale: const Locale('pt', 'BR'),
+                  );
+
+                  if (pickedDate != null && pickedDate != _data) {
+                    setState(() {
+                      _data = pickedDate;
+                    });
+                  }
+                },
+                validator: (value) {
+                  return null;
+                },
+                controller: TextEditingController(
+                    text: DateFormat('dd/MM/yyyy').format(_data)),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          child: const Text('Cancelar'),
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+        ),
+        ElevatedButton(
+          child: const Text('Salvar'),
+          onPressed: () {
+            if (_formKey.currentState!.validate()) {
+              _formKey.currentState!.save();
+              // Lógica para salvar a transação
+              Navigator.of(context).pop();
+            }
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class MultiSelectDialog extends StatefulWidget {
+  final List<Map<String, dynamic>> items;
+  final List<String> selectedItems;
+
+  const MultiSelectDialog({
+    super.key,
+    required this.items,
+    required this.selectedItems,
+  });
+
+  @override
+  _MultiSelectDialogState createState() => _MultiSelectDialogState();
+}
+
+class _MultiSelectDialogState extends State<MultiSelectDialog> {
+  late List<String> _tempSelectedItems;
+
+  @override
+  void initState() {
+    super.initState();
+    _tempSelectedItems = List.from(widget.selectedItems);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Selecione as Tags'),
+      content: SingleChildScrollView(
+        child: ListBody(
+          children: widget.items
+              .map((item) => CheckboxListTile(
+                    value:
+                        _tempSelectedItems.contains(item['tag_id'].toString()),
+                    title: Text(item['title']),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    onChanged: (isChecked) {
+                      setState(() {
+                        if (isChecked!) {
+                          _tempSelectedItems.add(item['tag_id'].toString());
+                        } else {
+                          _tempSelectedItems.remove(item['tag_id'].toString());
+                        }
+                      });
+                    },
+                  ))
+              .toList(),
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          child: const Text('Cancelar'),
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+        ),
+        ElevatedButton(
+          child: const Text('Selecionar'),
+          onPressed: () {
+            Navigator.of(context).pop(_tempSelectedItems);
+          },
+        ),
+      ],
     );
   }
 }
