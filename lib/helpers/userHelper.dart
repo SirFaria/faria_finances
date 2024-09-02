@@ -2,6 +2,8 @@ import 'package:postgres/postgres.dart';
 import 'package:faria_finances/database/config.dart';
 
 String? loggedUserId;
+String loggedUserName = '';
+String loggedUserEmail = '';
 
 Future<void> createUser(String name, String email, String password) async {
   try {
@@ -53,6 +55,10 @@ Future<bool> loginUser(String email, String password) async {
     // Verifico se o resultado retornado é válido e retorno um booleano para cada situação
     if (result.isNotEmpty) {
       loggedUserId = result[0][0].toString(); // Armazena o user_id globalmente
+      loggedUserName =
+          result[0][1].toString(); // Armazena o user_id globalmente
+      loggedUserEmail =
+          result[0][2].toString(); // Armazena o user_id globalmente
       return true;
     } else {
       return false;
