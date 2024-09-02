@@ -138,6 +138,26 @@ class RegisterPage extends StatelessWidget {
                           );
                         } catch (e) {
                           // Exibe uma mensagem de erro em caso de falha no registro
+                          if (e == 'email_already_exists') {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Erro ao registrar usuário!'),
+                                content: const Text(
+                                    'O email já se encontra registrado no sistema, tente um email diferente.'),
+                                actions: <Widget>[
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                    child: const Text('OK'),
+                                  ),
+                                ],
+                              ),
+                            );
+
+                            return;
+                          }
                           showDialog(
                             context: context,
                             builder: (context) => AlertDialog(

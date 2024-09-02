@@ -10,6 +10,15 @@ Future<void> createUser(String name, String email, String password) async {
     // Faço a conexão com o banco
     final conn = await database();
 
+    final result = await conn.execute(
+      Sql.named(' SELECT COUNT(*) AS count FROM users WHERE email = @email'),
+      parameters: {'email': email},
+    );
+
+    if (result.isNotEmpty && result[0][0] >= 1) {
+      throw ('email_already_exists');
+    }
+
     // Executo a query para cadastrar usuário
     await conn!.execute(
       r'INSERT INTO users (name, email, password) VALUES ($1, $2, $3)',
