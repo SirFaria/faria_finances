@@ -350,7 +350,7 @@ class _TagListPageState extends State<TagListPage> {
                   showDialog(
                     context: context,
                     builder: (context) => AlertDialog(
-                      title: const Text('Não foi possível cadastrar Marcador'),
+                      title: const Text('Não foi possível editar Marcador'),
                       content:
                           const Text('Verifique os campos e tente novamente.'),
                       actions: <Widget>[

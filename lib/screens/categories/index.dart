@@ -355,7 +355,7 @@ class _CategoryListPageState extends State<CategoryListPage> {
                   showDialog(
                     context: context,
                     builder: (context) => AlertDialog(
-                      title: const Text('Não foi possível cadastrar Categoria'),
+                      title: const Text('Não foi possível editar Categoria'),
                       content:
                           const Text('Verifique os campos e tente novamente.'),
                       actions: <Widget>[
