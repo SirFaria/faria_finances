@@ -1,3 +1,4 @@
+import 'package:faria_finances/helpers/cashierHelper.dart';
 import 'package:faria_finances/helpers/categoryHelper.dart';
 import 'package:faria_finances/helpers/tagHelper.dart';
 import 'package:faria_finances/helpers/transactionHelper.dart';
@@ -19,154 +20,438 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   List<dynamic> _transactions = [];
-  final String _cashierId = '1';
+  String? _selectedCashierId; // ID do caixa selecionado
+  List<Map<String, dynamic>> _cashiers = [];
+  List<Map<String, dynamic>> _categories = [];
+  List<Map<String, dynamic>> _tags = [];
+  String? _selectedCategoryId; // Categoria selecionada para o filtro
+  List<String> _selectedTagIds = []; // Tags selecionadas para o filtro
+  double _totalIncome = 0.0;
+  double _totalExpense = 0.0;
+  double _cashierBalance = 0.0;
 
   @override
   void initState() {
     super.initState();
-    _loadTransactions();
+    _loadCashiers(); // Carrega a lista de caixas
+    _loadCategories(); // Carrega a lista de categorias para o filtro
+    _loadTags(); // Carrega a lista de tags para o filtro
+  }
+
+  Future<void> _loadCashiers() async {
+    try {
+      final cashiers = await getCashiers(loggedUserId);
+      setState(() {
+        _cashiers = cashiers
+            .map<Map<String, dynamic>>((cashier) => {
+                  'cashier_id': cashier['cashier_id'],
+                  'balance': cashier['balance'],
+                  'description': cashier['description'],
+                })
+            .toList();
+        // Seleciona automaticamente o primeiro caixa se nenhum estiver selecionado
+        if (_cashiers.isNotEmpty && _selectedCashierId == null) {
+          _selectedCashierId = _cashiers[0]['cashier_id'].toString();
+          _cashierBalance = double.parse(_cashiers[0]['balance']) ?? 0.0;
+          _loadTransactions(); // Carrega as transações do caixa selecionado
+        }
+      });
+    } catch (e) {
+      print('Erro ao carregar caixas: $e');
+    }
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final categories =
+          await getCategories(loggedUserId); // Função de listar categorias
+      setState(() {
+        _categories = categories
+            .map<Map<String, dynamic>>((category) => {
+                  'category_id': category['category_id'],
+                  'title': category['title'],
+                })
+            .toList();
+      });
+    } catch (e) {
+      print('Erro ao carregar categorias: $e');
+    }
+  }
+
+  Future<void> _loadTags() async {
+    try {
+      final tags = await getTags(loggedUserId); // Função de listar tags
+      print(tags);
+      setState(() {
+        _tags = tags
+            .map<Map<String, dynamic>>((tag) => {
+                  'tag_id': tag['tag_id'],
+                  'title': tag['title'],
+                })
+            .toList();
+      });
+    } catch (e) {
+      print('Erro ao carregar tags: $e');
+    }
   }
 
   Future<void> _loadTransactions() async {
+    if (_selectedCashierId == null) return;
+
     try {
-      final transactions = await getTransactions(_cashierId);
+      var transactions = await getTransactions(_selectedCashierId!);
+
+      // Filtrar transações pela categoria selecionada
+      if (_selectedCategoryId != null) {
+        transactions = transactions
+            .where((transaction) =>
+                transaction['category_id'].toString() == _selectedCategoryId)
+            .toList();
+      }
+
+      // Filtrar transações pelas tags selecionadas
+      if (_selectedTagIds.isNotEmpty) {
+        transactions = transactions
+            .where((transaction) => _selectedTagIds.every((tagId) =>
+                transaction['tag_ids'] != null &&
+                transaction['tag_ids'].contains(int.parse(tagId))))
+            .toList();
+      }
+
       setState(() {
         _transactions = transactions;
+        _calculateTotals(); // Calcula os totais para os InfoCards
       });
     } catch (e) {
       print('Erro ao carregar transações: $e');
-      // Você pode exibir uma mensagem de erro aqui
     }
   }
 
-  Future<void> _deleteTransaction(int transactionId) async {
-    try {
-      // Implemente aqui a função para deletar a transação pelo ID
-      // await deleteTransaction(transactionId);
-      // Atualiza a lista após deletar
-      _loadTransactions();
-    } catch (e) {
-      print('Erro ao deletar transação: $e');
-      // Exiba uma mensagem de erro aqui se necessário
+  void _calculateTotals() {
+    _totalIncome = 0.0;
+    _totalExpense = 0.0;
+    for (final transaction in _transactions) {
+      final value = double.parse(transaction['value']) ?? 0.0;
+      if (transaction['transaction_type'] == 'income') {
+        print('income');
+        _totalIncome += value;
+      } else if (transaction['transaction_type'] == 'expense') {
+        _totalExpense += value;
+      }
     }
+  }
+
+  Future<void> _showChangeCashierModal(BuildContext context) async {
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return ChangeCashierModal(
+          cashiers: _cashiers,
+          selectedCashierId: _selectedCashierId,
+          onCashierSelected: (String cashierId, double balance) {
+            setState(() {
+              _selectedCashierId = cashierId;
+              _cashierBalance = balance;
+              _loadTransactions(); // Recarrega transações após troca de caixa
+            });
+          },
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Olá, Mateus'),
+        title: Text('Olá, $loggedUserName'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.switch_account),
-            onPressed: () {
-              // Lógica para trocar caixa
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              // Lógica para logout
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const LoginPage()),
-              );
-            },
-          ),
+          ElevatedButton(
+              onPressed: () {
+                _showChangeCashierModal(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.grey,
+                padding: const EdgeInsets.symmetric(
+                    vertical: 18.0, horizontal: 16.0),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4.0),
+                ),
+              ),
+              child: const Row(
+                children: [
+                  Text('Trocar caixa', style: TextStyle(color: Colors.white)),
+                  SizedBox(width: 8),
+                  Icon(
+                    Icons.switch_account,
+                    color: Colors.white,
+                  )
+                ],
+              )),
+          const SizedBox(width: 8),
+          ElevatedButton(
+              onPressed: () {
+                // Lógica para logout
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginPage()),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                padding: const EdgeInsets.symmetric(
+                    vertical: 18.0, horizontal: 16.0),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4.0),
+                ),
+              ),
+              child: const Row(
+                children: [
+                  Text('Fazer logout', style: TextStyle(color: Colors.white)),
+                  SizedBox(width: 8),
+                  Icon(
+                    Icons.logout,
+                    color: Colors.white,
+                  )
+                ],
+              )),
+          // const SizedBox(width: 27),
         ],
       ),
       body: Container(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  padding: const EdgeInsets.symmetric(vertical: 16.0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4.0),
-                  ),
-                ),
-                onPressed: () async {
-                  await _showAddTransactionModal(context);
-                  _loadTransactions();
-                },
-                child: const Row(
+        child: _cashiers.isEmpty
+            ? const Center(
+                child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.add, color: Colors.white),
-                    SizedBox(width: 8),
-                    Text('Adicionar Transação',
-                        style: TextStyle(color: Colors.white)),
+                    Icon(Icons.warning, size: 64, color: Colors.orange),
+                    SizedBox(height: 16),
+                    Text(
+                      'Nenhum caixa disponível.',
+                      style: TextStyle(fontSize: 18, color: Colors.black54),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Crie um caixa para poder registrar transações.',
+                      style: TextStyle(fontSize: 14, color: Colors.black54),
+                    ),
                   ],
                 ),
-              ),
-            ),
-            Expanded(
-              child: ListView.builder(
-                itemCount: _transactions.length,
-                itemBuilder: (context, index) {
-                  final transaction = _transactions[index];
-                  final value =
-                      double.parse(transaction['value'].replaceAll(',', '.'));
-                  return TransactionCard(
-                    name: transaction['title'] ?? '',
-                    value: value,
-                    category: transaction['category_title'] ?? 'Sem Categoria',
-                    tags: List<String>.from(transaction['tag_titles'] ?? []),
-                    date: DateFormat('dd/MM/yyyy').format(
-                      transaction['transaction_date'],
-                    ),
-                    transactionType: transaction['transaction_type'],
-                    onEdit: () async {
-                      await _showEditTransactionModal(context, transaction);
-                      _loadTransactions(); // Atualiza a lista após editar uma transação
-                    },
-                    onDelete: () async {
-                      await _deleteTransaction(transaction['transaction_id']);
-                    },
-                  );
-                },
-              ),
-            ),
-            const Padding(
-              padding: EdgeInsets.all(8.0),
-              child: Row(
+              )
+            : Column(
                 children: [
+                  Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              decoration: const InputDecoration(
+                                  labelText: 'Filtrar por categoria'),
+                              value: _selectedCategoryId,
+                              items: _categories.map((category) {
+                                return DropdownMenuItem<String>(
+                                  value: category['category_id'].toString(),
+                                  child: Text(category['title']),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setState(() {
+                                  _selectedCategoryId = value;
+                                  _loadTransactions(); // Recarrega as transações após mudar a categoria
+                                });
+                              },
+                              isExpanded: true,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextFormField(
+                              decoration: const InputDecoration(
+                                  labelText: 'Filtrar por marcadores'),
+                              readOnly: true,
+                              onTap: () async {
+                                final selectedTags =
+                                    await showDialog<List<String>>(
+                                  context: context,
+                                  builder: (BuildContext context) {
+                                    return MultiSelectDialog(
+                                      items: _tags,
+                                      selectedItems: _selectedTagIds,
+                                    );
+                                  },
+                                );
+
+                                if (selectedTags != null) {
+                                  setState(() {
+                                    _selectedTagIds = selectedTags;
+                                    _loadTransactions(); // Recarrega as transações após mudar as tags
+                                  });
+                                }
+                              },
+                              controller: TextEditingController(
+                                text: _selectedTagIds.isNotEmpty
+                                    ? _tags
+                                        .where((tag) => _selectedTagIds
+                                            .contains(tag['tag_id'].toString()))
+                                        .map((tag) => tag['title'])
+                                        .join(', ')
+                                    : '',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                              onPressed: _clearFilters,
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 18.0, horizontal: 16.0),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4.0),
+                                ),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Text('Remover filtros',
+                                      style: TextStyle(color: Colors.black)),
+                                  SizedBox(width: 8),
+                                  Icon(Icons.clear)
+                                ],
+                              ))
+                        ],
+                      )),
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _selectedCashierId == null
+                            ? Colors.grey
+                            : Colors.blue,
+                        padding: const EdgeInsets.symmetric(vertical: 16.0),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4.0),
+                        ),
+                      ),
+                      onPressed: _selectedCashierId == null
+                          ? null // Desabilita o botão se não houver caixa selecionado
+                          : () async {
+                              await _showAddTransactionModal(context,
+                                  int.parse(_selectedCashierId.toString()));
+                              _loadTransactions(); // Atualiza a lista após criar uma transação
+                            },
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add, color: Colors.white),
+                          SizedBox(width: 8),
+                          Text('Adicionar Transação',
+                              style: TextStyle(color: Colors.white)),
+                        ],
+                      ),
+                    ),
+                  ),
                   Expanded(
-                      child: InfoCard(
-                          title: 'Entradas', value: 15382.64, isIncome: true)),
-                  SizedBox(width: 8),
-                  Expanded(
-                      child: InfoCard(
-                          title: 'Saídas', value: -483.96, isIncome: false)),
-                  SizedBox(width: 8),
-                  Expanded(
-                      child: InfoCard(
-                          title: 'Saldo', value: 14898.68, isIncome: true)),
+                    child: _transactions.isEmpty
+                        ? const Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.receipt_long,
+                                    size: 64, color: Colors.grey),
+                                SizedBox(height: 16),
+                                Text(
+                                  'Nenhuma transação encontrada.',
+                                  style: TextStyle(
+                                      fontSize: 18, color: Colors.black54),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: _transactions.length,
+                            itemBuilder: (context, index) {
+                              final transaction = _transactions[index];
+                              final value = double.parse(
+                                  transaction['value'].replaceAll(',', '.'));
+                              return TransactionCard(
+                                name: transaction['title'] ?? '',
+                                value: value,
+                                category: transaction['category_title'] ??
+                                    'Sem Categoria',
+                                tags: List<String>.from(
+                                    transaction['tag_titles'] ?? []),
+                                date: DateFormat('dd/MM/yyyy').format(
+                                  transaction['transaction_date'],
+                                ),
+                                transactionType:
+                                    transaction['transaction_type'],
+                                onEdit: () async {
+                                  await _showEditTransactionModal(
+                                      context, transaction);
+                                  _loadTransactions(); // Atualiza a lista após editar uma transação
+                                },
+                                onDelete: () async {
+                                  await _showDeleteTransactionModal(
+                                      context, transaction);
+                                  _loadTransactions(); // Atualiza a lista após excluir uma transação
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: InfoCard(
+                            title: 'Entradas',
+                            value: _totalIncome,
+                            isIncome: true,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: InfoCard(
+                            title: 'Saídas',
+                            value: _totalExpense,
+                            isIncome: false,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: InfoCard(
+                            title: 'Saldo',
+                            value:
+                                _cashierBalance + _totalIncome - _totalExpense,
+                            isIncome: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
-            ),
-          ],
-        ),
       ),
       drawer: ClipRRect(
         borderRadius: BorderRadius.zero,
         child: Drawer(
           child: ListView(
             children: <Widget>[
-              const UserAccountsDrawerHeader(
-                accountName: Text("Mateus"),
-                accountEmail: Text("mateus@exemplo.com"),
+              UserAccountsDrawerHeader(
+                accountName: Text(loggedUserName),
+                accountEmail: Text(loggedUserEmail),
               ),
               ListTile(
                 leading: const Icon(Icons.home),
                 title: const Text("Transações"),
                 onTap: () {
                   // Lógica para navegação
-                  Navigator.pop(context);
+                  _loadCashiers();
                   _loadTransactions(); // Atualiza a lista após fechar o drawer
+                  _loadCategories(); // Carrega a lista de categorias para o filtro
+                  _loadTags(); // Carrega a lista de marcadores para o filtro
+                  Navigator.pop(context);
                 },
               ),
               ListTile(
@@ -178,7 +463,10 @@ class _DashboardPageState extends State<DashboardPage> {
                     MaterialPageRoute(
                         builder: (context) => const CategoryListPage()),
                   ).then((_) {
+                    _loadCashiers();
                     _loadTransactions(); // Atualiza a lista após fechar o drawer
+                    _loadCategories(); // Carrega a lista de categorias para o filtro
+                    _loadTags(); // Carrega a lista de marcadores para o filtro
                   });
                 },
               ),
@@ -192,7 +480,10 @@ class _DashboardPageState extends State<DashboardPage> {
                     MaterialPageRoute(
                         builder: (context) => const TagListPage()),
                   ).then((_) {
+                    _loadCashiers();
                     _loadTransactions(); // Atualiza a lista após fechar o drawer
+                    _loadCategories(); // Carrega a lista de categorias para o filtro
+                    _loadTags(); // Carrega a lista de marcadores para o filtro
                   });
                 },
               ),
@@ -206,7 +497,10 @@ class _DashboardPageState extends State<DashboardPage> {
                     MaterialPageRoute(
                         builder: (context) => const CashierListPage()),
                   ).then((_) {
+                    _loadCashiers();
                     _loadTransactions(); // Atualiza a lista após fechar o drawer
+                    _loadCategories(); // Carrega a lista de categorias para o filtro
+                    _loadTags(); // Carrega a lista de marcadores para o filtro
                   });
                 },
               ),
@@ -218,11 +512,20 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Future<void> _showAddTransactionModal(BuildContext context) async {
+  void _clearFilters() {
+    setState(() {
+      _selectedCategoryId = null;
+      _selectedTagIds.clear();
+      _loadTransactions(); // Recarrega a lista de transações sem filtros
+    });
+  }
+
+  Future<void> _showAddTransactionModal(
+      BuildContext context, int cashierId) async {
     await showDialog(
       context: context,
       builder: (BuildContext context) {
-        return const AddTransactionModal();
+        return AddTransactionModal(cashierId: cashierId);
       },
     );
   }
@@ -236,10 +539,21 @@ class _DashboardPageState extends State<DashboardPage> {
       },
     );
   }
+
+  Future<void> _showDeleteTransactionModal(
+      BuildContext context, Map<String, dynamic> transaction) async {
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return DeleteTransactionModal(transaction: transaction);
+      },
+    );
+  }
 }
 
 class AddTransactionModal extends StatefulWidget {
-  const AddTransactionModal({super.key});
+  final int cashierId;
+  const AddTransactionModal({super.key, required this.cashierId});
 
   @override
   _AddTransactionModalState createState() => _AddTransactionModalState();
@@ -257,12 +571,14 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
   List<Map<String, dynamic>> _tags = [];
   List<String> _selectedTagIds = [];
   DateTime _data = DateTime.now();
+  late int _cashierId;
 
   @override
   void initState() {
     super.initState();
     _loadCategories(); // Carrega as categorias quando o modal é inicializado
     _loadTags(); // Carrega as tags
+    _cashierId = widget.cashierId;
   }
 
   Future<void> _loadCategories() async {
@@ -309,16 +625,13 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
         int categoryId = int.parse(_selectedCategoryId!);
         double value = double.parse(_valor.replaceAll(',', '.'));
 
-        // Suponha que cashierId é um valor fixo para exemplo. Substitua por lógica apropriada.
-        int cashierId = 1;
-
         await createTransaction(
           _titulo,
           _descricao,
           value,
           _tipo,
           categoryId,
-          cashierId,
+          _cashierId,
           _data,
           _selectedTagIds,
         );
@@ -366,7 +679,7 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
                 decoration: const InputDecoration(labelText: 'Título'),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Por favor, insira o título';
+                    return 'Campo obrigatório';
                   }
                   return null;
                 },
@@ -376,7 +689,7 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
                 decoration: const InputDecoration(labelText: 'Descrição'),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Por favor, insira a descrição';
+                    return 'Campo obrigatório';
                   }
                   return null;
                 },
@@ -390,10 +703,10 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
                 ],
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Por favor, insira o valor';
+                    return 'Campo obrigatório';
                   }
                   if (double.tryParse(value) == null) {
-                    return 'Por favor, insira um valor válido';
+                    return 'Campo obrigatório';
                   }
                   return null;
                 },
@@ -428,13 +741,13 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
                 },
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Por favor, selecione uma categoria';
+                    return 'Campo obrigatório';
                   }
                   return null;
                 },
               ),
               TextFormField(
-                decoration: const InputDecoration(labelText: 'Tags'),
+                decoration: const InputDecoration(labelText: 'Marcadores'),
                 onTap: () async {
                   final selectedTags = await showDialog<List<String>>(
                     context: context,
@@ -455,7 +768,7 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
                 readOnly: true,
                 validator: (value) {
                   if (_selectedTagIds.isEmpty) {
-                    return 'Por favor, selecione ao menos uma tag';
+                    return 'Campo obrigatório';
                   }
                   return null;
                 },
@@ -663,7 +976,7 @@ class _EditTransactionModalState extends State<EditTransactionModal> {
                 decoration: const InputDecoration(labelText: 'Título'),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Por favor, insira o título';
+                    return 'Campo obrigatório';
                   }
                   return null;
                 },
@@ -674,7 +987,7 @@ class _EditTransactionModalState extends State<EditTransactionModal> {
                 decoration: const InputDecoration(labelText: 'Descrição'),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Por favor, insira a descrição';
+                    return 'Campo obrigatório';
                   }
                   return null;
                 },
@@ -689,10 +1002,10 @@ class _EditTransactionModalState extends State<EditTransactionModal> {
                 ],
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Por favor, insira o valor';
+                    return 'Campo obrigatório';
                   }
                   if (double.tryParse(value.replaceAll(',', '.')) == null) {
-                    return 'Por favor, insira um valor válido';
+                    return 'Campo obrigatório';
                   }
                   return null;
                 },
@@ -727,13 +1040,13 @@ class _EditTransactionModalState extends State<EditTransactionModal> {
                 },
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Por favor, selecione uma categoria';
+                    return 'Campo obrigatório';
                   }
                   return null;
                 },
               ),
               TextFormField(
-                decoration: const InputDecoration(labelText: 'Tags'),
+                decoration: const InputDecoration(labelText: 'Marcadores'),
                 readOnly: true,
                 onTap: () async {
                   final selectedTags = await showDialog<List<String>>(
@@ -754,7 +1067,7 @@ class _EditTransactionModalState extends State<EditTransactionModal> {
                 },
                 validator: (value) {
                   if (_selectedTagIds.isEmpty) {
-                    return 'Por favor, selecione ao menos uma tag';
+                    return 'Campo obrigatório';
                   }
                   return null;
                 },
@@ -803,6 +1116,126 @@ class _EditTransactionModalState extends State<EditTransactionModal> {
         ElevatedButton(
           onPressed: _updateTransaction,
           child: const Text('Salvar'),
+        ),
+      ],
+    );
+  }
+}
+
+class DeleteTransactionModal extends StatefulWidget {
+  final Map<String, dynamic> transaction;
+
+  const DeleteTransactionModal({super.key, required this.transaction});
+
+  @override
+  _DeleteTransactionModalState createState() => _DeleteTransactionModalState();
+}
+
+class _DeleteTransactionModalState extends State<DeleteTransactionModal> {
+  late int _transactionId;
+  late String _titulo;
+
+  @override
+  void initState() {
+    super.initState();
+    _transactionId = widget.transaction['transaction_id'];
+    _titulo = widget.transaction['title'] ?? '';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Excluir Transação'),
+      content: Text('Tem certeza que deseja excluir a transação "$_titulo"?'),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          child: const Text('Cancelar'),
+        ),
+        TextButton(
+          onPressed: () async {
+            try {
+              await deleteTransaction(_transactionId);
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content: Text('Transação excluída com sucesso!')));
+              Navigator.of(context).pop();
+            } catch (e) {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Não foi possível excluir a Transação'),
+                  content: const Text(
+                      'Ocorreu um erro ao tentar excluir a transação.'),
+                  actions: <Widget>[
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('OK'),
+                    ),
+                  ],
+                ),
+              );
+            }
+          },
+          child: const Text('Confirmar'),
+        ),
+      ],
+    );
+  }
+}
+
+class ChangeCashierModal extends StatelessWidget {
+  final List<Map<String, dynamic>> cashiers;
+  final String? selectedCashierId;
+  final Function(String, double) onCashierSelected;
+
+  const ChangeCashierModal({
+    super.key,
+    required this.cashiers,
+    required this.selectedCashierId,
+    required this.onCashierSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    String? cashierId = selectedCashierId;
+    double balance = 0.0;
+
+    return AlertDialog(
+      title: const Text('Selecionar Caixa'),
+      content: DropdownButtonFormField<String>(
+        value: cashierId,
+        items: cashiers.map((cashier) {
+          return DropdownMenuItem<String>(
+            value: cashier['cashier_id'].toString(),
+            child: Text(cashier['description']),
+          );
+        }).toList(),
+        onChanged: (value) {
+          cashierId = value;
+          balance = double.parse(cashiers.firstWhere((cashier) =>
+              cashier['cashier_id'].toString() == value)['balance']);
+        },
+        decoration: const InputDecoration(labelText: 'Caixa'),
+      ),
+      actions: [
+        TextButton(
+          child: const Text('Cancelar'),
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+        ),
+        ElevatedButton(
+          child: const Text('Selecionar'),
+          onPressed: () {
+            if (cashierId != null) {
+              onCashierSelected(cashierId!, balance);
+              Navigator.of(context).pop();
+            }
+          },
         ),
       ],
     );

@@ -184,3 +184,32 @@ Future<void> updateTransaction(
     rethrow;
   }
 }
+
+// EXCLUIR MARCADOR
+
+Future<void> deleteTransaction(int transactionId) async {
+  try {
+    // Faço a conexão com o banco
+    final conn = await database();
+
+    // Executo a query para excluir transações
+    await conn!.execute(
+      r'DELETE FROM transactions WHERE transaction_id = $1',
+      parameters: [transactionId],
+    );
+
+    // Remove todas as tags antigas associadas à transação
+    await conn.execute(
+      r'DELETE FROM transaction_tags WHERE transaction_id = $1',
+      parameters: [transactionId],
+    );
+
+    print('Transaction deleted!');
+
+    // Finalizo a conexão com o banco
+    await conn.close();
+  } catch (e) {
+    print('Error deleting transaction: $e');
+    rethrow;
+  }
+}
