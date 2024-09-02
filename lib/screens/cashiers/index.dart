@@ -125,17 +125,17 @@ class _CashierListPageState extends State<CashierListPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
-                controller: balanceController,
-                decoration: const InputDecoration(
-                  labelText: 'Saldo',
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              TextField(
                 controller: descriptionController,
                 decoration: const InputDecoration(
-                  labelText: 'Descrição',
+                  labelText: 'Título',
                 ),
+              ),
+              TextField(
+                controller: balanceController,
+                decoration: const InputDecoration(
+                  labelText: 'Saldo inicial',
+                ),
+                keyboardType: TextInputType.number,
               ),
             ],
           ),
@@ -285,17 +285,17 @@ class _CashierListPageState extends State<CashierListPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
-                controller: balanceController,
-                decoration: const InputDecoration(
-                  labelText: 'Saldo',
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              TextField(
                 controller: descriptionController,
                 decoration: const InputDecoration(
-                  labelText: 'Descrição',
+                  labelText: 'Título',
                 ),
+              ),
+              TextField(
+                controller: balanceController,
+                decoration: const InputDecoration(
+                  labelText: 'Saldo inicial',
+                ),
+                keyboardType: TextInputType.number,
               ),
             ],
           ),
