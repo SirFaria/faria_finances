@@ -200,7 +200,7 @@ class _DashboardPageState extends State<DashboardPage> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
                 padding: const EdgeInsets.symmetric(
-                    vertical: 18.0, horizontal: 16.0),
+                    vertical: 18.0, horizontal: 25.5),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(4.0),
                 ),
@@ -215,6 +215,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   )
                 ],
               )),
+          const SizedBox(width: 8),
           // const SizedBox(width: 27),
         ],
       ),
@@ -621,6 +622,38 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
 
+      final formInputs = [
+        _titulo.isEmpty,
+        _descricao.isEmpty,
+        _valor.isEmpty,
+        double.tryParse(_valor) == null,
+        _selectedCategoryId == null,
+        _selectedTagIds.isEmpty,
+        _data == null
+      ];
+
+      final hasError = formInputs.any((input) => input);
+
+      if (hasError) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Não foi possível criar a Transação'),
+            content: const Text('Verifique os campos e tente novamente.'),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+
+        return;
+      }
+
       try {
         int categoryId = int.parse(_selectedCategoryId!);
         double value = double.parse(_valor.replaceAll(',', '.'));
@@ -677,22 +710,22 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
             children: <Widget>[
               TextFormField(
                 decoration: const InputDecoration(labelText: 'Título'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Campo obrigatório';
-                  }
-                  return null;
-                },
+                // validator: (value) {
+                //   if (value == null || value.isEmpty) {
+                //     return 'Campo obrigatório';
+                //   }
+                //   return null;
+                // },
                 onSaved: (value) => _titulo = value!,
               ),
               TextFormField(
                 decoration: const InputDecoration(labelText: 'Descrição'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Campo obrigatório';
-                  }
-                  return null;
-                },
+                // validator: (value) {
+                //   if (value == null || value.isEmpty) {
+                //     return 'Campo obrigatório';
+                //   }
+                //   return null;
+                // },
                 onSaved: (value) => _descricao = value!,
               ),
               TextFormField(
@@ -701,15 +734,15 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
                 ],
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Campo obrigatório';
-                  }
-                  if (double.tryParse(value) == null) {
-                    return 'Campo obrigatório';
-                  }
-                  return null;
-                },
+                // validator: (value) {
+                //   if (value == null || value.isEmpty) {
+                //     return 'Campo obrigatório';
+                //   }
+                //   if (double.tryParse(value) == null) {
+                //     return 'Campo obrigatório';
+                //   }
+                //   return null;
+                // },
                 onSaved: (value) => _valor = value!,
               ),
               DropdownButtonFormField<String>(
@@ -739,12 +772,12 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
                         value; // Salva o ID da categoria selecionada
                   });
                 },
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Campo obrigatório';
-                  }
-                  return null;
-                },
+                // validator: (value) {
+                //   if (value == null || value.isEmpty) {
+                //     return 'Campo obrigatório';
+                //   }
+                //   return null;
+                // },
               ),
               TextFormField(
                 decoration: const InputDecoration(labelText: 'Marcadores'),
@@ -766,12 +799,12 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
                   }
                 },
                 readOnly: true,
-                validator: (value) {
-                  if (_selectedTagIds.isEmpty) {
-                    return 'Campo obrigatório';
-                  }
-                  return null;
-                },
+                // validator: (value) {
+                //   if (_selectedTagIds.isEmpty) {
+                //     return 'Campo obrigatório';
+                //   }
+                //   return null;
+                // },
                 controller: TextEditingController(
                     text: _selectedTagIds.isNotEmpty
                         ? _tags
@@ -800,9 +833,9 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
                     });
                   }
                 },
-                validator: (value) {
-                  return null;
-                },
+                // validator: (value) {
+                //   return null;
+                // },
                 controller: TextEditingController(
                     text: DateFormat('dd/MM/yyyy').format(_data)),
               ),
@@ -821,16 +854,6 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
           onPressed: _createTransaction,
           child: const Text('Salvar'), // Chama a função de criação de transação
         ),
-        // ElevatedButton(
-        //   child: const Text('Salvar'),
-        //   onPressed: () {
-        //     if (_formKey.currentState!.validate()) {
-        //       _formKey.currentState!.save();
-        //       // Lógica para salvar a transação
-        //       Navigator.of(context).pop();
-        //     }
-        //   },
-        // ),
       ],
     );
   }
@@ -913,6 +936,38 @@ class _EditTransactionModalState extends State<EditTransactionModal> {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
 
+      final formInputs = [
+        _titulo.isEmpty,
+        _descricao.isEmpty,
+        _valor.isEmpty,
+        double.tryParse(_valor) == null,
+        _selectedCategoryId == null,
+        _selectedTagIds.isEmpty,
+        _data == null
+      ];
+
+      final hasError = formInputs.any((input) => input);
+
+      if (hasError) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Não foi possível criar a Transação'),
+            content: const Text('Verifique os campos e tente novamente.'),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+
+        return;
+      }
+
       try {
         int categoryId = int.parse(_selectedCategoryId!);
         double value = double.parse(_valor.replaceAll(',', '.'));
@@ -974,23 +1029,23 @@ class _EditTransactionModalState extends State<EditTransactionModal> {
               TextFormField(
                 initialValue: _titulo,
                 decoration: const InputDecoration(labelText: 'Título'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Campo obrigatório';
-                  }
-                  return null;
-                },
+                // validator: (value) {
+                //   if (value == null || value.isEmpty) {
+                //     return 'Campo obrigatório';
+                //   }
+                //   return null;
+                // },
                 onSaved: (value) => _titulo = value!,
               ),
               TextFormField(
                 initialValue: _descricao,
                 decoration: const InputDecoration(labelText: 'Descrição'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Campo obrigatório';
-                  }
-                  return null;
-                },
+                // validator: (value) {
+                //   if (value == null || value.isEmpty) {
+                //     return 'Campo obrigatório';
+                //   }
+                //   return null;
+                // },
                 onSaved: (value) => _descricao = value!,
               ),
               TextFormField(
@@ -1000,15 +1055,15 @@ class _EditTransactionModalState extends State<EditTransactionModal> {
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
                 ],
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Campo obrigatório';
-                  }
-                  if (double.tryParse(value.replaceAll(',', '.')) == null) {
-                    return 'Campo obrigatório';
-                  }
-                  return null;
-                },
+                // validator: (value) {
+                //   if (value == null || value.isEmpty) {
+                //     return 'Campo obrigatório';
+                //   }
+                //   if (double.tryParse(value.replaceAll(',', '.')) == null) {
+                //     return 'Campo obrigatório';
+                //   }
+                //   return null;
+                // },
                 onSaved: (value) => _valor = value!,
               ),
               DropdownButtonFormField<String>(
@@ -1038,12 +1093,12 @@ class _EditTransactionModalState extends State<EditTransactionModal> {
                     _selectedCategoryId = value;
                   });
                 },
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Campo obrigatório';
-                  }
-                  return null;
-                },
+                // validator: (value) {
+                //   if (value == null || value.isEmpty) {
+                //     return 'Campo obrigatório';
+                //   }
+                //   return null;
+                // },
               ),
               TextFormField(
                 decoration: const InputDecoration(labelText: 'Marcadores'),
@@ -1065,12 +1120,12 @@ class _EditTransactionModalState extends State<EditTransactionModal> {
                     });
                   }
                 },
-                validator: (value) {
-                  if (_selectedTagIds.isEmpty) {
-                    return 'Campo obrigatório';
-                  }
-                  return null;
-                },
+                // validator: (value) {
+                //   if (_selectedTagIds.isEmpty) {
+                //     return 'Campo obrigatório';
+                //   }
+                //   return null;
+                // },
                 controller: TextEditingController(
                     text: _selectedTagIds.isNotEmpty
                         ? _tags
