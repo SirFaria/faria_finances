@@ -265,7 +265,6 @@ class _CashierListPageState extends State<CashierListPage> {
 
   void _showEditCashierDialog(BuildContext context, int cashierId,
       String currentBalance, String currentDescription) {
-    print(currentBalance);
     final balanceController = MoneyMaskedTextController(
       leftSymbol: 'R\$ ',
       decimalSeparator: ',',
