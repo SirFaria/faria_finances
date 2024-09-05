@@ -8,6 +8,7 @@ import 'package:faria_finances/screens/categories/index.dart';
 import 'package:faria_finances/screens/login/index.dart';
 import 'package:faria_finances/screens/tags/index.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_masked_text2/flutter_masked_text2.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 
@@ -564,7 +565,11 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
   final _formKey = GlobalKey<FormState>();
   String _titulo = '';
   String _descricao = '';
-  String _valor = '';
+  final MoneyMaskedTextController _valor = MoneyMaskedTextController(
+    leftSymbol: 'R\$ ',
+    decimalSeparator: ',',
+    thousandSeparator: '.',
+  );
   String _tipo = 'income';
   final String _categoria = '';
   String? _selectedCategoryId;
@@ -625,8 +630,8 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
       final formInputs = [
         _titulo.isEmpty,
         _descricao.isEmpty,
-        _valor.isEmpty,
-        double.tryParse(_valor) == null,
+        _valor.text.isEmpty,
+        // double.tryParse(_valor) == null,
         _selectedCategoryId == null,
         _selectedTagIds.isEmpty,
         _data == null
@@ -656,12 +661,16 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
 
       try {
         int categoryId = int.parse(_selectedCategoryId!);
-        double value = double.parse(_valor.replaceAll(',', '.'));
+        String formattedValue = _valor.text
+            .replaceAll('R\$ ', '')
+            .replaceAll('.', '')
+            .replaceAll(',', '.');
+        double newValue = double.tryParse(formattedValue) ?? 0.0;
 
         await createTransaction(
           _titulo,
           _descricao,
-          value,
+          newValue,
           _tipo,
           categoryId,
           _cashierId,
@@ -729,11 +738,12 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
                 onSaved: (value) => _descricao = value!,
               ),
               TextFormField(
+                controller: _valor,
                 decoration: const InputDecoration(labelText: 'Valor'),
                 keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-                ],
+                // inputFormatters: [
+                //   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                // ],
                 // validator: (value) {
                 //   if (value == null || value.isEmpty) {
                 //     return 'Campo obrigatório';
@@ -743,7 +753,7 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
                 //   }
                 //   return null;
                 // },
-                onSaved: (value) => _valor = value!,
+                onSaved: (value) => _valor.text = value!,
               ),
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(labelText: 'Tipo'),
@@ -872,7 +882,7 @@ class _EditTransactionModalState extends State<EditTransactionModal> {
   final _formKey = GlobalKey<FormState>();
   late String _titulo;
   late String _descricao;
-  late String _valor;
+  late MoneyMaskedTextController _valor;
   late String _tipo;
   String? _selectedCategoryId;
   List<Map<String, dynamic>> _categories = [];
@@ -885,7 +895,13 @@ class _EditTransactionModalState extends State<EditTransactionModal> {
     super.initState();
     _titulo = widget.transaction['title'] ?? '';
     _descricao = widget.transaction['description'] ?? '';
-    _valor = widget.transaction['value']?.toString() ?? '';
+    final valor = (widget.transaction['value']?.toString() ?? '');
+    _valor = MoneyMaskedTextController(
+      leftSymbol: 'R\$ ',
+      decimalSeparator: ',',
+      thousandSeparator: '.',
+      initialValue: double.tryParse(valor.replaceAll('R\$ ', '')) ?? 0.0,
+    );
     _tipo = widget.transaction['transaction_type'] ?? 'income';
     _selectedCategoryId = widget.transaction['category_id']?.toString();
     _selectedTagIds = List<String>.from(widget.transaction['tag_ids']
@@ -939,8 +955,8 @@ class _EditTransactionModalState extends State<EditTransactionModal> {
       final formInputs = [
         _titulo.isEmpty,
         _descricao.isEmpty,
-        _valor.isEmpty,
-        double.tryParse(_valor) == null,
+        _valor.text.isEmpty,
+        // double.tryParse(_valor) == null,
         _selectedCategoryId == null,
         _selectedTagIds.isEmpty,
         _data == null
@@ -970,7 +986,11 @@ class _EditTransactionModalState extends State<EditTransactionModal> {
 
       try {
         int categoryId = int.parse(_selectedCategoryId!);
-        double value = double.parse(_valor.replaceAll(',', '.'));
+        String formattedValue = _valor.text
+            .replaceAll('R\$ ', '')
+            .replaceAll('.', '')
+            .replaceAll(',', '.');
+        double newValue = double.tryParse(formattedValue) ?? 0.0;
         int transactionId =
             widget.transaction['transaction_id']; // Obtém o ID da transação
 
@@ -981,7 +1001,7 @@ class _EditTransactionModalState extends State<EditTransactionModal> {
           transactionId,
           _titulo,
           _descricao,
-          value,
+          newValue,
           _tipo,
           categoryId,
           cashierId,
@@ -1049,12 +1069,12 @@ class _EditTransactionModalState extends State<EditTransactionModal> {
                 onSaved: (value) => _descricao = value!,
               ),
               TextFormField(
-                initialValue: _valor,
+                controller: _valor,
                 decoration: const InputDecoration(labelText: 'Valor'),
                 keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-                ],
+                // inputFormatters: [
+                //   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                // ],
                 // validator: (value) {
                 //   if (value == null || value.isEmpty) {
                 //     return 'Campo obrigatório';
@@ -1064,7 +1084,7 @@ class _EditTransactionModalState extends State<EditTransactionModal> {
                 //   }
                 //   return null;
                 // },
-                onSaved: (value) => _valor = value!,
+                onSaved: (value) => _valor.text = value!,
               ),
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(labelText: 'Tipo'),
@@ -1389,6 +1409,12 @@ class TransactionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final formattedValue = transactionType == 'income' ? value : value * -1;
 
+    // Converter a String para double e depois formatar para moeda brasileira
+    final currencyValue = NumberFormat.currency(
+      locale: 'pt_BR',
+      symbol: 'R\$',
+    ).format(value);
+
     return Card(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(4.0),
@@ -1426,7 +1452,7 @@ class TransactionCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'R\$ ${formattedValue.toStringAsFixed(2)}',
+              currencyValue,
               style: TextStyle(
                 color: formattedValue < 0 ? Colors.red : Colors.green,
                 fontSize: 20,
@@ -1466,6 +1492,12 @@ class InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Converter a String para double e depois formatar para moeda brasileira
+    final currencyValue = NumberFormat.currency(
+      locale: 'pt_BR',
+      symbol: 'R\$',
+    ).format(value);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -1473,7 +1505,7 @@ class InfoCard extends StatelessWidget {
           children: [
             Text(title),
             Text(
-              'R\$ ${value.toStringAsFixed(2)}',
+              currencyValue,
               style: TextStyle(
                 color: isIncome ? Colors.green : Colors.red,
                 fontSize: 20,
