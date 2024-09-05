@@ -105,7 +105,7 @@ Future<void> updateCategory(
 
 // EXCLUIR CATEGORIA
 
-Future<void> deleteCategory(int id, String? userId) async {
+Future<List<dynamic>> deleteCategory(int id, String? userId) async {
   try {
     // Verifico se o usuário está logado, caso não estiver, um erro será gerado
     if (userId == null) {
@@ -115,7 +115,19 @@ Future<void> deleteCategory(int id, String? userId) async {
     // Faço a conexão com o banco
     final conn = await database();
 
-    // Executo a query para excluir categorias
+    // Verifico se há transações associadas a esta categoria
+    final results = await conn!.execute(
+      r'SELECT title FROM transactions WHERE category_id = $1',
+      parameters: [id],
+    );
+
+    if (results.isNotEmpty) {
+      // Se houver transações, retorno a lista de transações
+      await conn.close();
+      return results.map((row) => {'title': row[0]}).toList();
+    }
+
+    // Se não houver transações, excluo a categoria
     await conn!.execute(
       r'DELETE FROM categories WHERE category_id = $1 AND user_id = $2',
       parameters: [id, userId],
@@ -125,6 +137,9 @@ Future<void> deleteCategory(int id, String? userId) async {
 
     // Finalizo a conexão com o banco
     await conn.close();
+
+    // Retorno uma lista vazia, indicando que a categoria foi excluída
+    return [];
   } catch (e) {
     print('Error deleting category: $e');
     rethrow;

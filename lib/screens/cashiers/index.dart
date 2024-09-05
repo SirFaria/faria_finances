@@ -229,7 +229,37 @@ class _CashierListPageState extends State<CashierListPage> {
             TextButton(
               onPressed: () async {
                 try {
-                  await deleteCashier(cashierId, loggedUserId);
+                  var data = await deleteCashier(cashierId, loggedUserId);
+
+                  // Verifica se há transações associadas ao caixa
+                  if (data.isNotEmpty) {
+                    // String transactionTitles = data
+                    //     .map((transaction) => transaction['title'])
+                    //     .join(', ');
+
+                    // Mostra o diálogo informando que há transações associadas
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Não foi possível excluir o Caixa'),
+                        content: const Text(
+                            // 'Não é possível excluir o caixa pois ele possui as seguintes transações atribuídas: $transactionTitles.\n\nExclua as transações acima para poder excluir o caixa selecionado.'),
+                            'Não é possível excluir o caixa selecionado pois ele possui transações registradas'),
+                        actions: <Widget>[
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                            },
+                            child: const Text('OK'),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    return;
+                  }
+
+                  // Exibe mensagem de sucesso se o caixa foi excluído
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                       content: Text('Caixa excluído com sucesso!')));
                   Navigator.of(context).pop();
@@ -240,7 +270,7 @@ class _CashierListPageState extends State<CashierListPage> {
                   showDialog(
                     context: context,
                     builder: (context) => AlertDialog(
-                      title: const Text('Não foi possível excluir o Caixa'),
+                      title: const Text('Erro ao excluir o Caixa'),
                       content: const Text(
                           'Ocorreu um erro ao tentar excluir o caixa.'),
                       actions: <Widget>[

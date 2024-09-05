@@ -231,7 +231,37 @@ class _TagListPageState extends State<TagListPage> {
               onPressed: () async {
                 try {
                   // Faço a chamada da função de excluir marcador
-                  await deleteTag(tagId, loggedUserId);
+                  var data = await deleteTag(tagId, loggedUserId);
+
+                  // Verifica se há transações associadas ao marcador
+                  if (data.isNotEmpty) {
+                    // String transactionTitles = data
+                    //     .map((transaction) => transaction['title'])
+                    //     .join(', ');
+
+                    // Mostra o diálogo informando que há transações associadas
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title:
+                            const Text('Não foi possível excluir o Marcador'),
+                        content: const Text(
+                            // 'Não é possível excluir o marcador pois ele possui as seguintes transações atribuídas: $transactionTitles.\n\nExclua as transações acima para poder excluir o marcador selecionado.'),
+                            'Não é possível excluir o marcador selecionado pois ele está atribuído a transações'),
+                        actions: <Widget>[
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                            },
+                            child: const Text('OK'),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    return;
+                  }
+
                   // Exibo uma mensagem de sucesso
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                       content: Text('Marcador excluído com sucesso!')));
