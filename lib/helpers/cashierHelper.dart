@@ -104,26 +104,39 @@ Future<void> updateCashier(
 
 // EXCLUIR MARCADOR
 
-Future<void> deleteCashier(int id, String? userId) async {
+Future<List<dynamic>> deleteCashier(int id, String? userId) async {
   try {
-    // Verifico se o usuário está logado, caso não estiver, um erro será gerado
+    // Verifico se o usuário está logado
     if (userId == null) {
-      throw Error();
+      throw Exception("Usuário não autenticado");
     }
 
     // Faço a conexão com o banco
     final conn = await database();
 
-    // Executo a query para excluir caixas
-    await conn!.execute(
+    // Verifico se há transações associadas a este caixa
+    final results = await conn!.execute(
+      r'SELECT title FROM transactions WHERE cashier_id = $1',
+      parameters: [id],
+    );
+
+    if (results.isNotEmpty) {
+      // Se houver transações, retorno a lista de transações
+      await conn.close();
+      return results.map((row) => {'title': row[0]}).toList();
+    }
+
+    // Se não houver transações, excluo o caixa
+    await conn.execute(
       r'DELETE FROM cashier WHERE cashier_id = $1 AND user_id = $2',
       parameters: [id, userId],
     );
 
     print('Cashier deleted!');
-
-    // Finalizo a conexão com o banco
     await conn.close();
+
+    // Retorno uma lista vazia, indicando que o caixa foi excluído
+    return [];
   } catch (e) {
     print('Error deleting cashier: $e');
     rethrow;

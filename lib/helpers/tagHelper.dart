@@ -104,7 +104,7 @@ Future<void> updateTag(
 
 // EXCLUIR MARCADOR
 
-Future<void> deleteTag(int id, String? userId) async {
+Future<List<dynamic>> deleteTag(int id, String? userId) async {
   try {
     // Verifico se o usuário está logado, caso não estiver, um erro será gerado
     if (userId == null) {
@@ -114,7 +114,19 @@ Future<void> deleteTag(int id, String? userId) async {
     // Faço a conexão com o banco
     final conn = await database();
 
-    // Executo a query para excluir marcadores
+    // Verifico se há transações associadas a este marcador
+    final results = await conn!.execute(
+      r'SELECT transaction_id FROM transaction_tags WHERE tag_id = $1',
+      parameters: [id],
+    );
+
+    if (results.isNotEmpty) {
+      // Se houver transações, retorno a lista de transações
+      await conn.close();
+      return results.map((row) => {'title': row[0]}).toList();
+    }
+
+    // Se não houver transações, excluo o marcador
     await conn!.execute(
       r'DELETE FROM tags WHERE tag_id = $1 AND user_id = $2',
       parameters: [id, userId],
@@ -124,6 +136,9 @@ Future<void> deleteTag(int id, String? userId) async {
 
     // Finalizo a conexão com o banco
     await conn.close();
+
+    // Retorno uma lista vazia, indicando que o marcador foi excluído
+    return [];
   } catch (e) {
     print('Error deleting tag: $e');
     rethrow;

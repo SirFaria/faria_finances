@@ -235,7 +235,36 @@ class _CategoryListPageState extends State<CategoryListPage> {
               onPressed: () async {
                 try {
                   // Faço a chamada da função de excluir categoria
-                  await deleteCategory(categoryId, loggedUserId);
+                  var data = await deleteCategory(categoryId, loggedUserId);
+
+                  if (data.isNotEmpty) {
+                    // String transactionTitles = data
+                    //     .map((transaction) => transaction['title'])
+                    //     .join(', ');
+
+                    // Mostra o diálogo informando que há transações associadas
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title:
+                            const Text('Não foi possível excluir a Categoria'),
+                        content: const Text(
+                            // 'Não é possível excluir a categoria pois ela possui as seguintes transações atribuídas: $transactionTitles.\n\nExclua as transações acima para poder excluir a categoria selecionada.'),
+                            'Não é possível excluir a categoria selecionada pois ela está atribuída a transações'),
+                        actions: <Widget>[
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                            },
+                            child: const Text('OK'),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    return;
+                  }
+
                   // Exibo uma mensagem de sucesso
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                       content: Text('Categoria excluída com sucesso!')));
