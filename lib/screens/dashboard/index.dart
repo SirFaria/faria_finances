@@ -389,7 +389,10 @@ class _DashboardPageState extends State<DashboardPage> {
                                     transaction['transaction_type'],
                                 onEdit: () async {
                                   await _showEditTransactionModal(
-                                      context, transaction);
+                                    context,
+                                    int.parse(_selectedCashierId.toString()),
+                                    transaction,
+                                  );
                                   _loadTransactions(); // Atualiza a lista após editar uma transação
                                 },
                                 onDelete: () async {
@@ -532,12 +535,13 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Future<void> _showEditTransactionModal(
-      BuildContext context, Map<String, dynamic> transaction) async {
+  Future<void> _showEditTransactionModal(BuildContext context, int cashierId,
+      Map<String, dynamic> transaction) async {
     await showDialog(
       context: context,
       builder: (BuildContext context) {
-        return EditTransactionModal(transaction: transaction);
+        return EditTransactionModal(
+            cashierId: cashierId, transaction: transaction);
       },
     );
   }
@@ -871,8 +875,10 @@ class _AddTransactionModalState extends State<AddTransactionModal> {
 
 class EditTransactionModal extends StatefulWidget {
   final Map<String, dynamic> transaction;
+  final int cashierId;
 
-  const EditTransactionModal({super.key, required this.transaction});
+  const EditTransactionModal(
+      {super.key, required this.cashierId, required this.transaction});
 
   @override
   _EditTransactionModalState createState() => _EditTransactionModalState();
@@ -889,6 +895,7 @@ class _EditTransactionModalState extends State<EditTransactionModal> {
   List<Map<String, dynamic>> _tags = [];
   List<String> _selectedTagIds = [];
   late DateTime _data;
+  late int _cashierId;
 
   @override
   void initState() {
@@ -912,6 +919,8 @@ class _EditTransactionModalState extends State<EditTransactionModal> {
 
     _loadCategories();
     _loadTags();
+
+    _cashierId = widget.cashierId;
   }
 
   Future<void> _loadCategories() async {
@@ -994,9 +1003,6 @@ class _EditTransactionModalState extends State<EditTransactionModal> {
         int transactionId =
             widget.transaction['transaction_id']; // Obtém o ID da transação
 
-        // Suponha que cashierId é um valor fixo para exemplo. Substitua por lógica apropriada.
-        int cashierId = 1;
-
         await updateTransaction(
           transactionId,
           _titulo,
@@ -1004,7 +1010,7 @@ class _EditTransactionModalState extends State<EditTransactionModal> {
           newValue,
           _tipo,
           categoryId,
-          cashierId,
+          _cashierId,
           _data,
           _selectedTagIds.map((tagId) => int.parse(tagId)).toList(),
         );
